@@ -194,6 +194,7 @@ async function indexSale(sale: Sale) {
 
   for (const log of logs) {
     const parsed = iface.parseLog({ topics: log.topics, data: log.data });
+    if (!parsed) continue;
     const amountRaw = parsed.args.value as bigint;
     const amountStr = ethers.formatUnits(amountRaw, sale.paymentTokenDecimals);
     const amount = new Prisma.Decimal(amountStr);
