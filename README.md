@@ -41,6 +41,11 @@ A production-ready presale tracker that indexes USDC transfers into a sale recip
 - Insert new `Sale` rows in the database (or run the seed with a different `SALE_SLUG`).
 - Run the indexer with `npm run indexer -- --slug=your-slug` or `npm run indexer -- --all`.
 
+## Vercel Cron (every 2 minutes)
+1) Set `DATABASE_URL`, `RPC_URL`, and (optional) `INDEXER_SECRET` in Vercel project settings.
+2) Deploy `vercel.json` (included) which calls `/api/indexer/run` every 2 minutes.
+3) If you set `INDEXER_SECRET`, update `vercel.json` to include `?secret=YOUR_SECRET`.
+
 ## Cron example
 Run every 2 minutes:
 ```bash
