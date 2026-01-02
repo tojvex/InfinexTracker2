@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --page-bg: #f5f4ef;
+  --page-bg-2: #e4eef7;
+  --page-bg-3: #fdf7ea;
+  --ink: #0b1320;
+}
+
+body {
+  @apply text-ink antialiased;
+  background-color: var(--page-bg);
+  background-image:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 55%),
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), transparent 50%),
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-2) 45%, var(--page-bg-3) 100%);
+  min-height: 100vh;
+}
+
+::selection {
+  background-color: rgba(15, 118, 110, 0.2);
+}

@@ -1,0 +1,67 @@
+// Prisma schema for presale tracker
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")           // pooled (PgBouncer)
+  directUrl = env("DATABASE_URL_UNPOOLED")  // direct
+}
+
+
+
+model Sale {
+  id                   String     @id @default(cuid())
+  slug                 String     @unique
+  chainId              Int
+  paymentToken         String
+  paymentTokenDecimals Int
+  recipient            String
+  startTs              BigInt
+  endTs                BigInt
+  targetRaise          Decimal?   @db.Decimal(38, 18)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  state                SaleState?
+  transfers            Transfer[]
+  buckets              Bucket5m[]
+}
+
+model SaleState {
+  saleId             String   @id
+  sale               Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  lastProcessedBlock BigInt   @default(0)
+  lastUpdatedAt      DateTime @default(now())
+  totalInvested      Decimal  @default(0) @db.Decimal(38, 18)
+}
+
+model Transfer {
+  id             String   @id @default(cuid())
+  saleId         String
+  sale           Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  txHash         String
+  logIndex       Int
+  blockNumber    BigInt
+  blockTimestamp BigInt
+  from           String
+  to             String
+  amountRaw      String
+  amount         Decimal  @db.Decimal(38, 18)
+
+  @@unique([txHash, logIndex, saleId])
+  @@index([saleId, blockTimestamp])
+}
+
+model Bucket5m {
+  id            String   @id @default(cuid())
+  saleId        String
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  bucketStartTs BigInt
+  amount        Decimal  @db.Decimal(38, 18)
+  txCount       Int
+
+  @@unique([saleId, bucketStartTs])
+  @@index([saleId, bucketStartTs])
+}
