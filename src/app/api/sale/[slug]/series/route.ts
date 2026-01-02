@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
+  const { prisma } = await import("@/lib/db");
   const sale = await prisma.sale.findUnique({
     where: { slug: params.slug }
   });

@@ -1,14 +1,18 @@
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export async function GET(
   _request: Request,
   { params }: { params: { slug: string } }
 ) {
+  const [{ prisma }, { Prisma }] = await Promise.all([
+    import("@/lib/db"),
+    import("@prisma/client")
+  ]);
   const sale = await prisma.sale.findUnique({
     where: { slug: params.slug },
     include: { state: true }
