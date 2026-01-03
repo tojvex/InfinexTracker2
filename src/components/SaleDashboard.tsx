@@ -513,8 +513,17 @@ export default function SaleDashboard({ slug }: { slug: string }) {
                       dataKey="amount"
                       stroke="#0f766e"
                       strokeWidth={2.5}
-                      dot={false}
-                      activeDot={{ r: 4 }}
+                      dot={
+                        bucketView === "1h"
+                          ? {
+                              r: 4,
+                              fill: "#0f766e",
+                              fillOpacity: 0.45,
+                              strokeWidth: 0
+                            }
+                          : false
+                      }
+                      activeDot={{ r: 4, fill: "#0f766e" }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
