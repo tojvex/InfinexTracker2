@@ -45,6 +45,11 @@ const timeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
   minute: "2-digit"
 });
+const hourFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit"
+});
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -91,6 +96,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  const [bucketView, setBucketView] = useState<"5m" | "1h">("5m");
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -151,15 +157,44 @@ export default function SaleDashboard({ slug }: { slug: string }) {
     return () => clearInterval(tick);
   }, []);
 
-  const chartData = useMemo(
-    () =>
-      series.map((point) => ({
-        time: point.bucketStartTs * 1000,
-        amount: parseAmount(point.amount),
+  const chartData = useMemo(() => {
+    const base = series.map((point) => ({
+      timeSec: point.bucketStartTs,
+      amount: parseAmount(point.amount),
+      txCount: point.txCount
+    }));
+
+    if (bucketView === "5m") {
+      return base.map((point) => ({
+        time: point.timeSec * 1000,
+        amount: point.amount,
         txCount: point.txCount
-      })),
-    [series]
-  );
+      }));
+    }
+
+    const hourlyMap = new Map<number, { amount: number; txCount: number }>();
+    for (const point of base) {
+      const hourStartSec = Math.floor(point.timeSec / 3600) * 3600;
+      const existing = hourlyMap.get(hourStartSec);
+      if (existing) {
+        existing.amount += point.amount;
+        existing.txCount += point.txCount;
+      } else {
+        hourlyMap.set(hourStartSec, {
+          amount: point.amount,
+          txCount: point.txCount
+        });
+      }
+    }
+
+    return Array.from(hourlyMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([timeSec, data]) => ({
+        time: timeSec * 1000,
+        amount: data.amount,
+        txCount: data.txCount
+      }));
+  }, [series, bucketView]);
 
   const totalInvested = parseAmount(stats?.totalInvested);
   const investedLastHour = parseAmount(stats?.investedLastHour);
@@ -270,18 +305,44 @@ export default function SaleDashboard({ slug }: { slug: string }) {
 
         <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-soft backdrop-blur animate-rise">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                  Momentum (5m buckets)
+                  Momentum ({bucketView === "5m" ? "5m buckets" : "hourly"})
                 </p>
                 <h2 className="mt-2 text-lg font-semibold text-ink">
                   Inflow Trend
                 </h2>
               </div>
-              <span className="rounded-full bg-mist px-3 py-1 text-xs font-medium text-slate-600">
-                Last 24h
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-mist px-3 py-1 text-xs font-medium text-slate-600">
+                  Last 24h
+                </span>
+                <div className="flex items-center rounded-full border border-white/70 bg-white/80 p-1 text-xs font-medium text-slate-600">
+                  <button
+                    type="button"
+                    onClick={() => setBucketView("5m")}
+                    className={`rounded-full px-3 py-1 transition ${
+                      bucketView === "5m"
+                        ? "bg-ink text-white shadow-soft"
+                        : "text-slate-600 hover:text-ink"
+                    }`}
+                  >
+                    5m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBucketView("1h")}
+                    className={`rounded-full px-3 py-1 transition ${
+                      bucketView === "1h"
+                        ? "bg-ink text-white shadow-soft"
+                        : "text-slate-600 hover:text-ink"
+                    }`}
+                  >
+                    1h
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="mt-4 h-72">
@@ -296,7 +357,9 @@ export default function SaleDashboard({ slug }: { slug: string }) {
                     <XAxis
                       dataKey="time"
                       tickFormatter={(value) =>
-                        timeFormatter.format(new Date(value as number))
+                        bucketView === "1h"
+                          ? hourFormatter.format(new Date(value as number))
+                          : timeFormatter.format(new Date(value as number))
                       }
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       axisLine={false}
@@ -316,7 +379,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
                         return (
                           <div className="rounded-lg border border-white/70 bg-white/90 px-3 py-2 text-xs shadow-soft">
                             <p className="text-slate-500">
-                              {timeFormatter.format(new Date(label as number))}
+                              {dateFormatter.format(new Date(label as number))}
                             </p>
                             <p className="mt-1 font-semibold text-ink">
                               {formatAmount(Number(amount))} USDC

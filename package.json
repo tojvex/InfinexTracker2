@@ -11,7 +11,8 @@
     "db:studio": "prisma studio",
     "seed": "prisma db seed",
     "indexer": "tsx src/indexer/run.ts",
-    "indexer:watch": "tsx src/indexer/run.ts --watch --interval=120"
+    "indexer:watch": "tsx src/indexer/run.ts --watch --interval=120",
+    "indexer:rebuild": "tsx src/indexer/rebuild.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
