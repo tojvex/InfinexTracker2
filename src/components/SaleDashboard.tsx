@@ -249,13 +249,16 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const avgHourlyRate = useMemo(() => {
     if (!stats) return investedLastHour;
     const cutoffSec = stats.startTs + 3600;
+    const currentHourStart = Math.floor(nowSec / 3600) * 3600;
     const eligible = hourlyTotals.filter(
-      (point) => point.hourStartSec >= cutoffSec
+      (point) =>
+        point.hourStartSec >= cutoffSec &&
+        point.hourStartSec < currentHourStart
     );
     if (eligible.length === 0) return investedLastHour;
     const total = eligible.reduce((sum, point) => sum + point.amount, 0);
     return total / eligible.length;
-  }, [stats, hourlyTotals, investedLastHour]);
+  }, [stats, hourlyTotals, investedLastHour, nowSec]);
   const saleDurationSec = stats
     ? stats.endTs > 0 && stats.endTs > stats.startTs
       ? stats.endTs - stats.startTs
