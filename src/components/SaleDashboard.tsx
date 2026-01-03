@@ -76,6 +76,22 @@ function formatDuration(seconds: number) {
   return parts.join(" ");
 }
 
+function formatDurationWithSeconds(seconds: number) {
+  if (seconds <= 0) return "0s";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const parts = [];
+
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
+  parts.push(`${secs}s`);
+
+  return parts.join(" ");
+}
+
 function parseAmount(value: string | number | null | undefined) {
   if (value === null || value === undefined) return 0;
   const parsed = Number(value);
@@ -217,9 +233,9 @@ export default function SaleDashboard({ slug }: { slug: string }) {
 
   const countdownValue = stats
     ? nowSec < stats.startTs
-      ? formatDuration(stats.startTs - nowSec)
+      ? formatDurationWithSeconds(stats.startTs - nowSec)
       : nowSec <= stats.endTs
-        ? formatDuration(stats.endTs - nowSec)
+        ? formatDurationWithSeconds(stats.endTs - nowSec)
         : "0m"
     : "--";
 
