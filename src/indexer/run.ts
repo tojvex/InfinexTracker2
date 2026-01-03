@@ -1,10 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
 import { IndexerResult, runIndexerOnce } from "./indexer";
-
-const prisma = new PrismaClient({
-  log: ["error"]
-});
 
 function parseIntervalArg() {
   const intervalArg = process.argv.find((arg) => arg.startsWith("--interval="));
@@ -50,18 +45,18 @@ async function runOnce() {
   const defaultSlug = process.env.SALE_SLUG ?? "infinex-inx";
   const slug = slugArg ?? defaultSlug;
 
-  const results = await runIndexerOnce({
-    prisma,
-    slug,
-    runAll
-  });
+  const results = await runIndexerOnce({ slug, runAll });
 
   results.forEach(logResult);
 }
 
 async function runLoop(intervalSec: number) {
   while (true) {
-    await runOnce();
+    try {
+      await runOnce();
+    } catch (error) {
+      console.error("Indexer run failed; will retry next cycle.", error);
+    }
     console.log(`Waiting ${intervalSec}s before next run...`);
     await sleep(intervalSec * 1000);
   }
@@ -71,13 +66,8 @@ const intervalSec = parseIntervalArg();
 const watch = process.argv.includes("--watch") || intervalSec !== null;
 const effectiveIntervalSec = intervalSec ?? 300;
 
-const shutdown = async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-};
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => process.exit(0));
+process.on("SIGTERM", () => process.exit(0));
 
 const runner = watch ? runLoop(effectiveIntervalSec) : runOnce();
 
@@ -86,8 +76,8 @@ runner
     console.error(error);
     process.exitCode = 1;
   })
-  .finally(async () => {
+  .finally(() => {
     if (!watch) {
-      await prisma.$disconnect();
+      process.exit(process.exitCode ?? 0);
     }
   });
