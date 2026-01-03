@@ -115,13 +115,15 @@ export default function SaleDashboard({ slug }: { slug: string }) {
       setStats(statsJson);
 
       const now = Math.floor(Date.now() / 1000);
-      const start = statsJson.startTs ?? now;
-      const end = statsJson.endTs ?? now;
-      const fromTs = Math.max(start, now - 86400);
-      const toTs = Math.min(end, now);
+      const start = statsJson.startTs ?? 0;
+      const end = statsJson.endTs ?? 0;
+      const toTs = end > 0 ? Math.min(end, now) : now;
+      const fromTs =
+        start > 0 ? start : Math.max(0, toTs - 86400);
+      const safeFromTs = toTs < fromTs ? toTs : fromTs;
 
       const seriesRes = await fetch(
-        `/api/sale/${slug}/series?bucket=5m&fromTs=${fromTs}&toTs=${toTs}`,
+        `/api/sale/${slug}/series?bucket=5m&fromTs=${safeFromTs}&toTs=${toTs}`,
         { cache: "no-store" }
       );
 
@@ -316,7 +318,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-mist px-3 py-1 text-xs font-medium text-slate-600">
-                  Last 24h
+                  Sale window
                 </span>
                 <div className="flex items-center rounded-full border border-white/70 bg-white/80 p-1 text-xs font-medium text-slate-600">
                   <button
