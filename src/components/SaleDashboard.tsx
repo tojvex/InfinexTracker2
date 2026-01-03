@@ -562,7 +562,10 @@ export default function SaleDashboard({ slug }: { slug: string }) {
       </div>
 
       <footer className="mx-auto mt-10 max-w-6xl text-center text-xs text-slate-500">
-        <p>If anyone found the tracker useful, you can donate here:</p>
+        <p>
+          If you found this tracker helpful and would like to donate, you can do
+          so here:
+        </p>
         <button
           type="button"
           onClick={handleCopy}
