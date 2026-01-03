@@ -176,6 +176,8 @@ export default function SaleDashboard({ slug }: { slug: string }) {
         : "Sale Ended"
     : "Loading";
 
+  const displayName = "Infinex ICO Tracker";
+
   const countdownValue = stats
     ? nowSec < stats.startTs
       ? formatDuration(stats.startTs - nowSec)
@@ -198,7 +200,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             </p>
             <div>
               <h1 className="text-3xl font-semibold text-ink md:text-4xl">
-                {slugToTitle(slug)}
+                {displayName}
               </h1>
               <p className="mt-2 max-w-xl text-sm text-slate-600">
                 Live inflows for the current sale, tracked from on-chain USDC
