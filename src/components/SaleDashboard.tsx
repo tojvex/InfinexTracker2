@@ -113,6 +113,8 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
   const [bucketView, setBucketView] = useState<"5m" | "1h">("5m");
+  const [copied, setCopied] = useState(false);
+  const donationAddress = "0x298BCdA0e13Df1A98e3f3f38eE5420DB32BD52CA";
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -160,6 +162,17 @@ export default function SaleDashboard({ slug }: { slug: string }) {
       setIsRefreshing(false);
     }
   }, [slug]);
+
+  const handleCopy = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(donationAddress);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }, [donationAddress]);
 
   useEffect(() => {
     fetchData();
@@ -214,12 +227,55 @@ export default function SaleDashboard({ slug }: { slug: string }) {
       }));
   }, [series, bucketView]);
 
+  const hourlyTotals = useMemo(() => {
+    const hourlyMap = new Map<number, number>();
+    for (const point of series) {
+      const hourStartSec = Math.floor(point.bucketStartTs / 3600) * 3600;
+      const amount = parseAmount(point.amount);
+      hourlyMap.set(hourStartSec, (hourlyMap.get(hourStartSec) ?? 0) + amount);
+    }
+
+    return Array.from(hourlyMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([hourStartSec, amount]) => ({ hourStartSec, amount }));
+  }, [series]);
+
   const totalInvested = parseAmount(stats?.totalInvested);
   const investedLastHour = parseAmount(stats?.investedLastHour);
   const investedLastDay = parseAmount(stats?.investedLastDay);
   const velocityPerDayNow = parseAmount(stats?.velocityPerDayNow);
   const avgVelocityPerDay = parseAmount(stats?.avgVelocityPerDay);
   const targetRaise = parseAmount(stats?.targetRaise ?? undefined);
+  const avgHourlyRate = useMemo(() => {
+    if (!stats) return investedLastHour;
+    const cutoffSec = stats.startTs + 3600;
+    const eligible = hourlyTotals.filter(
+      (point) => point.hourStartSec >= cutoffSec
+    );
+    if (eligible.length === 0) return investedLastHour;
+    const total = eligible.reduce((sum, point) => sum + point.amount, 0);
+    return total / eligible.length;
+  }, [stats, hourlyTotals, investedLastHour]);
+  const saleDurationSec = stats
+    ? stats.endTs > 0 && stats.endTs > stats.startTs
+      ? stats.endTs - stats.startTs
+      : 7 * 86400
+    : 7 * 86400;
+  const saleEndSec = stats
+    ? stats.endTs > 0
+      ? stats.endTs
+      : stats.startTs > 0
+        ? stats.startTs + saleDurationSec
+        : nowSec + saleDurationSec
+    : nowSec + saleDurationSec;
+  const remainingSec = Math.max(0, saleEndSec - nowSec);
+  const remainingHours = remainingSec / 3600;
+  const optimisticProjection =
+    totalInvested + avgHourlyRate * 1.5 * remainingHours;
+  const realisticProjection =
+    totalInvested + avgHourlyRate * remainingHours;
+  const pessimisticProjection =
+    totalInvested + avgHourlyRate * 0.5 * remainingHours;
 
   const statusLabel = stats
     ? nowSec < stats.startTs
@@ -241,6 +297,9 @@ export default function SaleDashboard({ slug }: { slug: string }) {
 
   const lastUpdatedLabel = stats?.lastUpdatedAt
     ? dateFormatter.format(new Date(stats.lastUpdatedAt))
+    : "--";
+  const projectionHorizonLabel = stats
+    ? formatDuration(remainingSec)
     : "--";
 
   return (
@@ -320,6 +379,46 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             helper={`Target: ${formatAmount(targetRaise)} USDC`}
           />
         ) : null}
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Projection
+              </p>
+              <h2 className="mt-2 text-lg font-semibold text-ink">
+                Projected Total by Sale End
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Based on average hourly inflow after the first hour.
+              </p>
+            </div>
+            <span className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs text-slate-500">
+              Avg/hr: {formatAmount(avgHourlyRate, true)} USDC
+            </span>
+          </div>
+          <section className="grid gap-4 md:grid-cols-3">
+            <StatCard
+              label="Optimistic"
+              value={`${formatAmount(optimisticProjection, true)} USDC`}
+              helper={`Assumes +50% of avg/hr for ${projectionHorizonLabel}.`}
+              accent
+              delayMs={0}
+            />
+            <StatCard
+              label="Realistic"
+              value={`${formatAmount(realisticProjection, true)} USDC`}
+              helper={`Assumes avg/hr continues for ${projectionHorizonLabel}.`}
+              delayMs={80}
+            />
+            <StatCard
+              label="Pessimistic"
+              value={`${formatAmount(pessimisticProjection, true)} USDC`}
+              helper={`Assumes -50% of avg/hr for ${projectionHorizonLabel}.`}
+              delayMs={160}
+            />
+          </section>
+        </div>
 
         <section className="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-soft backdrop-blur animate-rise">
@@ -461,6 +560,20 @@ export default function SaleDashboard({ slug }: { slug: string }) {
           </div>
         </section>
       </div>
+
+      <footer className="mx-auto mt-10 max-w-6xl text-center text-xs text-slate-500">
+        <p>If anyone found the tracker useful, you can donate here:</p>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-1 font-mono text-slate-600 shadow-soft transition hover:-translate-y-0.5 hover:text-ink"
+        >
+          <span>{donationAddress}</span>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+            {copied ? "Copied" : "Copy"}
+          </span>
+        </button>
+      </footer>
     </main>
   );
 }
