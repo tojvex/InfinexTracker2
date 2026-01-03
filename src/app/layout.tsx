@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Presale Tracker",
-  description: "Track token sale inflows and momentum."
+  title: "Infinex ICO Tracker",
+  description: "Track infinex ico sale."
 };
 
 export default function RootLayout({
