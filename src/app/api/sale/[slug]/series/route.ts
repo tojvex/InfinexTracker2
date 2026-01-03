@@ -46,8 +46,11 @@ export async function GET(
   const fromTs = parseBigintParam(fromTsParam, fallbackFrom);
   const toTs = parseBigintParam(toTsParam, fallbackTo);
 
-  const start = fromTs < 0n ? 0n : fromTs;
-  const end = toTs < start ? start : toTs;
+  const startRaw = fromTs < 0n ? 0n : fromTs;
+  const endRaw = toTs < startRaw ? startRaw : toTs;
+  const bucketSize = 300n;
+  const start = (startRaw / bucketSize) * bucketSize;
+  const end = (endRaw / bucketSize) * bucketSize;
 
   const buckets = await prisma.bucket5m.findMany({
     where: {
@@ -60,11 +63,37 @@ export async function GET(
     orderBy: { bucketStartTs: "asc" }
   });
 
-  return NextResponse.json(
-    buckets.map((bucketRow) => ({
-      bucketStartTs: Number(bucketRow.bucketStartTs),
+  const bucketMap = new Map<number, { amount: string; txCount: number }>();
+  for (const bucketRow of buckets) {
+    const bucketStartTs = Number(bucketRow.bucketStartTs);
+    bucketMap.set(bucketStartTs, {
       amount: bucketRow.amount.toString(),
       txCount: bucketRow.txCount
-    }))
-  );
+    });
+  }
+
+  const series: Array<{ bucketStartTs: number; amount: string; txCount: number }> = [];
+  for (
+    let cursor = start;
+    cursor <= end;
+    cursor += bucketSize
+  ) {
+    const bucketStartTs = Number(cursor);
+    const existing = bucketMap.get(bucketStartTs);
+    if (existing) {
+      series.push({
+        bucketStartTs,
+        amount: existing.amount,
+        txCount: existing.txCount
+      });
+    } else {
+      series.push({
+        bucketStartTs,
+        amount: "0",
+        txCount: 0
+      });
+    }
+  }
+
+  return NextResponse.json(series);
 }
