@@ -24,6 +24,7 @@ type StatsResponse = {
   endTs: number;
   timeRemainingSec: number;
   percentOfTarget: number | null;
+  txCount: number;
   targetRaise: string | null;
   lastUpdatedAt?: string;
 };
@@ -246,6 +247,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const velocityPerDayNow = parseAmount(stats?.velocityPerDayNow);
   const avgVelocityPerDay = parseAmount(stats?.avgVelocityPerDay);
   const targetRaise = parseAmount(stats?.targetRaise ?? undefined);
+  const txCount = stats?.txCount ?? 0;
   const avgHourlyRate = useMemo(() => {
     if (!stats) return investedLastHour;
     const cutoffSec = stats.startTs + 3600;
@@ -348,7 +350,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <StatCard
             label="Total Invested"
             value={`${formatAmount(totalInvested)} USDC`}
@@ -357,16 +359,22 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             delayMs={0}
           />
           <StatCard
+            label="Participants"
+            value={formatAmount(txCount)}
+            helper="Unique wallets contributing"
+            delayMs={60}
+          />
+          <StatCard
             label="Hourly Change"
             value={`${formatAmount(investedLastHour, true)} USDC`}
             helper="Last 60 minutes"
-            delayMs={80}
+            delayMs={120}
           />
           <StatCard
             label="Daily Change"
             value={`${formatAmount(investedLastDay, true)} USDC`}
             helper="Last 24 hours"
-            delayMs={160}
+            delayMs={180}
           />
           <StatCard
             label="Velocity / Day"

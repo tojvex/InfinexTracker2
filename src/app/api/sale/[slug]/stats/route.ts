@@ -36,7 +36,7 @@ export async function GET(
   const hourAgo = BigInt(Math.max(0, nowSec - 3600));
   const dayAgo = BigInt(Math.max(0, nowSec - 86400));
 
-  const [hourAgg, dayAgg] = await Promise.all([
+  const [hourAgg, dayAgg, participantCount] = await Promise.all([
     prisma.bucket5m.aggregate({
       where: {
         saleId: sale.id,
@@ -50,6 +50,10 @@ export async function GET(
         bucketStartTs: { gte: dayAgo }
       },
       _sum: { amount: true }
+    }),
+    prisma.transfer.groupBy({
+      by: ["from"],
+      where: { saleId: sale.id }
     })
   ]);
 
@@ -83,6 +87,7 @@ export async function GET(
     endTs,
     timeRemainingSec,
     percentOfTarget,
+    txCount: participantCount.length,
     targetRaise: sale.targetRaise ? sale.targetRaise.toString() : null,
     lastUpdatedAt: state.lastUpdatedAt.toISOString()
   });
