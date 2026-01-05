@@ -37,6 +37,12 @@ type SeriesPoint = {
   txCount: number;
 };
 
+type LeaderboardEntry = {
+  address: string;
+  totalAmount: string;
+  txCount: number;
+};
+
 const numberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2
 });
@@ -101,6 +107,12 @@ function parseAmount(value: string | number | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function shortAddress(address: string) {
+  if (!address) return "--";
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 function slugToTitle(slug: string) {
   return slug
     .split("-")
@@ -111,13 +123,17 @@ function slugToTitle(slug: string) {
 export default function SaleDashboard({ slug }: { slug: string }) {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
+  const [leaderboardAll, setLeaderboardAll] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
   const [bucketView, setBucketView] = useState<"5m" | "1h">("5m");
+  const [leaderboardPage, setLeaderboardPage] = useState(0);
   const [copied, setCopied] = useState(false);
   const donationAddress = "0x298BCdA0e13Df1A98e3f3f38eE5420DB32BD52CA";
+  const leaderboardPageSize = 8;
+  const leaderboardMaxEntries = 100;
 
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
@@ -134,7 +150,6 @@ export default function SaleDashboard({ slug }: { slug: string }) {
 
       const statsJson = (await statsRes.json()) as StatsResponse;
       setStats(statsJson);
-
       const now = Math.floor(Date.now() / 1000);
       const start = statsJson.startTs ?? 0;
       const end = statsJson.endTs ?? 0;
@@ -154,6 +169,17 @@ export default function SaleDashboard({ slug }: { slug: string }) {
 
       const seriesJson = (await seriesRes.json()) as SeriesPoint[];
       setSeries(seriesJson);
+
+      const allRes = await fetch(
+        `/api/sale/${slug}/leaderboard?limit=${leaderboardMaxEntries}&offset=0`,
+        { cache: "no-store" }
+      );
+      if (allRes.ok) {
+        const allEntries = (await allRes.json()) as LeaderboardEntry[];
+        setLeaderboardAll(allEntries);
+      } else {
+        setLeaderboardAll([]);
+      }
     } catch (fetchError) {
       const message =
         fetchError instanceof Error
@@ -190,6 +216,19 @@ export default function SaleDashboard({ slug }: { slug: string }) {
 
     return () => clearInterval(tick);
   }, []);
+
+  useEffect(() => {
+    setLeaderboardPage(0);
+    setLeaderboardAll([]);
+  }, [slug]);
+
+  useEffect(() => {
+    const totalPages =
+      leaderboardAll.length > 0
+        ? Math.ceil(leaderboardAll.length / leaderboardPageSize)
+        : 1;
+    setLeaderboardPage((prev) => Math.min(prev, totalPages - 1));
+  }, [leaderboardAll, leaderboardPageSize]);
 
   const chartData = useMemo(() => {
     const base = series.map((point) => ({
@@ -310,9 +349,26 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const projectionHorizonLabel = stats
     ? formatDuration(remainingSec)
     : "--";
+  const leaderboardTotalCapped = Math.min(
+    leaderboardAll.length,
+    leaderboardMaxEntries
+  );
+  const leaderboardTotalPages =
+    leaderboardTotalCapped > 0
+      ? Math.ceil(leaderboardTotalCapped / leaderboardPageSize)
+      : 1;
+  const leaderboardPageDisplay = Math.min(
+    leaderboardPage,
+    leaderboardTotalPages - 1
+  );
+  const leaderboardStartRank = leaderboardPageDisplay * leaderboardPageSize + 1;
+  const leaderboardPageEntries = useMemo(() => {
+    const start = leaderboardPageDisplay * leaderboardPageSize;
+    return leaderboardAll.slice(start, start + leaderboardPageSize);
+  }, [leaderboardAll, leaderboardPageDisplay, leaderboardPageSize]);
 
   return (
-    <main className="relative px-6 pb-16 pt-12">
+    <main className="relative px-6 pb-24 pt-12">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-4">
@@ -607,9 +663,95 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             </div>
           </div>
         </section>
+
+        <section className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                Leaderboard
+              </p>
+              <h2 className="mt-2 text-lg font-semibold text-ink">
+                Top Contributors
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Ranked by total USDC sent to the sale wallet.
+              </p>
+            </div>
+            <span className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs text-slate-500">
+              Top {leaderboardTotalCapped}
+            </span>
+          </div>
+
+          {leaderboardPageEntries.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-500">
+              No contributions yet.
+            </p>
+          ) : (
+            <div className="mt-4 divide-y divide-slate-100 text-sm text-slate-600">
+              {leaderboardPageEntries.map((entry, index) => (
+                <div
+                  key={`${entry.address}-${index}`}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-400">
+                      #{leaderboardStartRank + index}
+                    </span>
+                    <span
+                      className="font-mono text-slate-700"
+                      title={entry.address}
+                    >
+                      {shortAddress(entry.address)}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-ink">
+                      {formatAmount(parseAmount(entry.totalAmount), true)} USDC
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {entry.txCount} tx
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {leaderboardTotalPages > 1 ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+              <span>
+                Page {leaderboardPageDisplay + 1} of {leaderboardTotalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLeaderboardPage((prev) => Math.max(prev - 1, 0))
+                  }
+                  disabled={leaderboardPageDisplay === 0}
+                  className="rounded-full border border-white/70 bg-white/80 px-3 py-1 font-medium text-slate-600 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLeaderboardPage((prev) =>
+                      Math.min(prev + 1, leaderboardTotalPages - 1)
+                    )
+                  }
+                  disabled={leaderboardPageDisplay >= leaderboardTotalPages - 1}
+                  className="rounded-full border border-white/70 bg-white/80 px-3 py-1 font-medium text-slate-600 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
       </div>
 
-      <footer className="mx-auto mt-10 max-w-6xl text-center text-xs text-slate-500">
+      <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/40 bg-white/30 px-6 py-3 text-center text-xs text-slate-500 backdrop-blur">
         <p>
           If you found this tracker helpful and would like to donate, you can do
           so here:
