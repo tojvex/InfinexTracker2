@@ -438,20 +438,21 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               helper={`Assumes -50% of avg/hr for ${projectionHorizonLabel}.`}
               delayMs={160}
             />
-            <StatCard
-              label="Post-cap Trend"
-              value={
-                avgHourlyPostCap > 0
-                  ? `${formatAmount(postCapProjection, true)} USDC`
-                  : "--"
-              }
-              helper={
-                stats?.capRemovedTs
-                  ? `Using post-cap avg/hr untill the sale ends.`
-                  : "Set cap removal time to enable."
-              }
-              delayMs={240}
-            />
+              <StatCard
+                label="Post-cap Trend"
+                value={
+                  avgHourlyPostCap > 0
+                    ? `${formatAmount(postCapProjection, true)} USDC`
+                    : "--"
+                }
+                helper={
+                  stats?.capRemovedTs
+                    ? `Using post-cap avg/hr until the sale ends.`
+                    : "Set cap removal time to enable."
+                }
+                highlight
+                delayMs={240}
+              />
           </section>
         </div>
 
@@ -564,7 +565,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur animate-rise">
+            <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                 Status
               </p>
@@ -574,7 +575,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur animate-rise">
+            <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
                 Sale Window
               </p>
@@ -590,14 +591,17 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur animate-rise">
+            <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                Health
+                Disclaimer
               </p>
               <div className="mt-3 text-sm text-slate-600">
-                <p>Indexer updates every 5 minutes.</p>
+                <p>
+                  Data is scoped live from the blockchain and provided for
+                  informational purposes only.
+                </p>
                 <p className="mt-2">
-                  Data scoped to USDC transfers into the sale recipient.
+                  This is not a financial advice.
                 </p>
               </div>
             </div>

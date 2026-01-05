@@ -7,7 +7,7 @@ export default function ProgressBar({ percent, helper }: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, percent));
 
   return (
-    <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur animate-rise">
+    <div className="rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise">
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-500">
         <span>Target Progress</span>
         <span className="font-mono text-slate-600">{clamped.toFixed(2)}%</span>
