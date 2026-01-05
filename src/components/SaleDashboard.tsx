@@ -447,7 +447,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               }
               helper={
                 stats?.capRemovedTs
-                  ? `Using post-cap avg/hr for ${projectionHorizonLabel}.`
+                  ? `Using post-cap avg/hr until the sale ends.`
                   : "Set cap removal time to enable."
               }
               delayMs={240}
