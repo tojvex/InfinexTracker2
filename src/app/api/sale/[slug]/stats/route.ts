@@ -55,7 +55,8 @@ export async function GET(
     }),
     prisma.transfer.groupBy({
       by: ["from"],
-      where: { saleId: sale.id }
+      where: { saleId: sale.id },
+      _min: { blockTimestamp: true }
     }),
     prisma.bucket5m.aggregate({
       where: {
@@ -73,6 +74,10 @@ export async function GET(
   const totalInvested = state.totalInvested ?? new Prisma.Decimal(0);
   const postCapTotal = postCapAgg._sum.amount ?? new Prisma.Decimal(0);
   const participantCount = participantGroups.length;
+  const postCapNewWallets = participantGroups.filter((row) => {
+    const firstSeen = row._min.blockTimestamp ?? 0n;
+    return firstSeen >= capRemovedTs;
+  }).length;
   const hoursSinceCap =
     Number(capRemovedTs) > 0
       ? Math.max(1, (nowSec - Number(capRemovedTs)) / 3600)
@@ -108,6 +113,7 @@ export async function GET(
     timeRemainingSec,
     percentOfTarget,
     txCount: participantCount,
+    postCapNewWallets,
     avgHourlyPostCap: avgHourlyPostCap.toString(),
     targetRaise: sale.targetRaise ? sale.targetRaise.toString() : null,
     lastUpdatedAt: state.lastUpdatedAt.toISOString()

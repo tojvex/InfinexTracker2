@@ -26,6 +26,7 @@ type StatsResponse = {
   timeRemainingSec: number;
   percentOfTarget: number | null;
   txCount: number;
+  postCapNewWallets: number;
   avgHourlyPostCap: string;
   targetRaise: string | null;
   lastUpdatedAt?: string;
@@ -287,6 +288,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const investedLastDay = parseAmount(stats?.investedLastDay);
   const targetRaise = parseAmount(stats?.targetRaise ?? undefined);
   const txCount = stats?.txCount ?? 0;
+  const postCapNewWallets = stats?.postCapNewWallets ?? 0;
   const avgHourlyPostCap = parseAmount(stats?.avgHourlyPostCap);
   const avgHourlyRate = useMemo(() => {
     if (!stats) return investedLastHour;
@@ -410,7 +412,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatCard
             label="Total Invested"
             value={`${formatAmount(totalInvested)} USDC`}
@@ -425,16 +427,22 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             delayMs={60}
           />
           <StatCard
+            label="New Wallets"
+            value={formatAmount(postCapNewWallets)}
+            helper="First contribution after cap removal"
+            delayMs={120}
+          />
+          <StatCard
             label="Hourly Change"
             value={`${formatAmount(investedLastHour, true)} USDC`}
             helper="Last 60 minutes"
-            delayMs={120}
+            delayMs={180}
           />
           <StatCard
             label="Daily Change"
             value={`${formatAmount(investedLastDay, true)} USDC`}
             helper="Last 24 hours"
-            delayMs={180}
+            delayMs={240}
           />
           <StatCard
             label="Avg Hourly"
@@ -447,7 +455,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
                 : "Since cap removal"
             }
             highlight
-            delayMs={240}
+            delayMs={300}
           />
         </section>
 
