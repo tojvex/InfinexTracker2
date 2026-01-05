@@ -446,6 +446,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
                   )}`
                 : "Since cap removal"
             }
+            highlight
             delayMs={240}
           />
         </section>

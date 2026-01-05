@@ -15,14 +15,21 @@ export default function StatCard({
   highlight,
   delayMs = 0
 }: StatCardProps) {
-  const highlightClass = "border-amber-200/80 bg-amber-50/70 ring-1 ring-amber-300/60";
+  const baseClass =
+    "rounded-2xl border p-5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise";
+  const highlightClass =
+    "border-amber-200/80 bg-amber-50/70 ring-1 ring-amber-300/60";
+  const standardClass = "border-white/60 bg-white/80";
   const accentClass = "ring-1 ring-tide/30";
+  const toneClass = highlight
+    ? highlightClass
+    : accent
+      ? `${standardClass} ${accentClass}`
+      : standardClass;
 
   return (
     <div
-      className={`rounded-2xl border border-white/60 bg-white/80 p-5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-glow animate-rise ${
-        highlight ? highlightClass : accent ? accentClass : ""
-      }`}
+      className={`${baseClass} ${toneClass}`}
       style={{ animationDelay: `${delayMs}ms` }}
     >
       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
