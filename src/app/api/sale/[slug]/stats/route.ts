@@ -36,7 +36,9 @@ export async function GET(
   const hourAgo = BigInt(Math.max(0, nowSec - 3600));
   const dayAgo = BigInt(Math.max(0, nowSec - 86400));
 
-  const [hourAgg, dayAgg, participantCount] = await Promise.all([
+  const capRemovedTs = sale.capRemovedTs ?? sale.startTs;
+
+  const [hourAgg, dayAgg, participantGroups, postCapAgg] = await Promise.all([
     prisma.bucket5m.aggregate({
       where: {
         saleId: sale.id,
@@ -54,6 +56,13 @@ export async function GET(
     prisma.transfer.groupBy({
       by: ["from"],
       where: { saleId: sale.id }
+    }),
+    prisma.bucket5m.aggregate({
+      where: {
+        saleId: sale.id,
+        bucketStartTs: { gte: capRemovedTs }
+      },
+      _sum: { amount: true }
     })
   ]);
 
@@ -62,6 +71,16 @@ export async function GET(
   const velocityPerDayNow = investedLastHour.mul(new Prisma.Decimal(24));
   const avgVelocityPerDay = investedLastDay;
   const totalInvested = state.totalInvested ?? new Prisma.Decimal(0);
+  const postCapTotal = postCapAgg._sum.amount ?? new Prisma.Decimal(0);
+  const participantCount = participantGroups.length;
+  const hoursSinceCap =
+    Number(capRemovedTs) > 0
+      ? Math.max(1, (nowSec - Number(capRemovedTs)) / 3600)
+      : 0;
+  const avgHourlyPostCap =
+    hoursSinceCap > 0
+      ? postCapTotal.div(new Prisma.Decimal(hoursSinceCap.toFixed(6)))
+      : new Prisma.Decimal(0);
 
   const startTs = Number(sale.startTs);
   const endTs = Number(sale.endTs);
@@ -85,9 +104,11 @@ export async function GET(
     avgVelocityPerDay: avgVelocityPerDay.toString(),
     startTs,
     endTs,
+    capRemovedTs: Number(capRemovedTs),
     timeRemainingSec,
     percentOfTarget,
-    txCount: participantCount.length,
+    txCount: participantCount,
+    avgHourlyPostCap: avgHourlyPostCap.toString(),
     targetRaise: sale.targetRaise ? sale.targetRaise.toString() : null,
     lastUpdatedAt: state.lastUpdatedAt.toISOString()
   });

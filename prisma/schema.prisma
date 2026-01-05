@@ -21,12 +21,14 @@ model Sale {
   recipient            String
   startTs              BigInt
   endTs                BigInt
+  capRemovedTs         BigInt?
   targetRaise          Decimal?   @db.Decimal(38, 18)
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
   state                SaleState?
   transfers            Transfer[]
   buckets              Bucket5m[]
+  
 }
 
 model SaleState {

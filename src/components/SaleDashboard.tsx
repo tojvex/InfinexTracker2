@@ -22,9 +22,11 @@ type StatsResponse = {
   avgVelocityPerDay: string;
   startTs: number;
   endTs: number;
+  capRemovedTs: number;
   timeRemainingSec: number;
   percentOfTarget: number | null;
   txCount: number;
+  avgHourlyPostCap: string;
   targetRaise: string | null;
   lastUpdatedAt?: string;
 };
@@ -244,10 +246,9 @@ export default function SaleDashboard({ slug }: { slug: string }) {
   const totalInvested = parseAmount(stats?.totalInvested);
   const investedLastHour = parseAmount(stats?.investedLastHour);
   const investedLastDay = parseAmount(stats?.investedLastDay);
-  const velocityPerDayNow = parseAmount(stats?.velocityPerDayNow);
-  const avgVelocityPerDay = parseAmount(stats?.avgVelocityPerDay);
   const targetRaise = parseAmount(stats?.targetRaise ?? undefined);
   const txCount = stats?.txCount ?? 0;
+  const avgHourlyPostCap = parseAmount(stats?.avgHourlyPostCap);
   const avgHourlyRate = useMemo(() => {
     if (!stats) return investedLastHour;
     const cutoffSec = stats.startTs + 3600;
@@ -281,6 +282,9 @@ export default function SaleDashboard({ slug }: { slug: string }) {
     totalInvested + avgHourlyRate * remainingHours;
   const pessimisticProjection =
     totalInvested + avgHourlyRate * 0.5 * remainingHours;
+  const postCapProjection = avgHourlyPostCap
+    ? totalInvested + avgHourlyPostCap * remainingHours
+    : 0;
 
   const statusLabel = stats
     ? nowSec < stats.startTs
@@ -377,9 +381,15 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             delayMs={180}
           />
           <StatCard
-            label="Velocity / Day"
-            value={`${formatAmount(velocityPerDayNow, true)} USDC`}
-            helper={`24h avg: ${formatAmount(avgVelocityPerDay, true)} USDC`}
+            label="Avg Hourly"
+            value={`${formatAmount(avgHourlyPostCap, true)} USDC`}
+            helper={
+              stats?.capRemovedTs
+                ? `Since cap removed at ${dateFormatter.format(
+                    new Date(stats.capRemovedTs * 1000)
+                  )}`
+                : "Since cap removal"
+            }
             delayMs={240}
           />
         </section>
@@ -408,7 +418,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               Avg/hr: {formatAmount(avgHourlyRate, true)} USDC
             </span>
           </div>
-          <section className="grid gap-4 md:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Optimistic"
               value={`${formatAmount(optimisticProjection, true)} USDC`}
@@ -427,6 +437,20 @@ export default function SaleDashboard({ slug }: { slug: string }) {
               value={`${formatAmount(pessimisticProjection, true)} USDC`}
               helper={`Assumes -50% of avg/hr for ${projectionHorizonLabel}.`}
               delayMs={160}
+            />
+            <StatCard
+              label="Post-cap Trend"
+              value={
+                avgHourlyPostCap > 0
+                  ? `${formatAmount(postCapProjection, true)} USDC`
+                  : "--"
+              }
+              helper={
+                stats?.capRemovedTs
+                  ? `Using post-cap avg/hr for ${projectionHorizonLabel}.`
+                  : "Set cap removal time to enable."
+              }
+              delayMs={240}
             />
           </section>
         </div>
