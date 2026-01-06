@@ -430,6 +430,7 @@ export default function SaleDashboard({ slug }: { slug: string }) {
             label="New Wallets"
             value={formatAmount(postCapNewWallets)}
             helper="First contribution after cap removal"
+            highlight
             delayMs={120}
           />
           <StatCard
